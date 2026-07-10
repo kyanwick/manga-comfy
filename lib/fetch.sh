@@ -28,7 +28,7 @@ _git_clone() { git clone --depth 1 "$1" "$2"; }
 
 ensure_dirs() {
   local d
-  for d in models/checkpoints models/loras models/vae custom_nodes output datasets prompts; do
+  for d in models/checkpoints models/loras models/vae models/ipadapter models/clip_vision models/insightface custom_nodes output datasets prompts; do
     mkdir -p "$WORKSPACE/$d"
   done
 }

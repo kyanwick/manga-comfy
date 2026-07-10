@@ -48,7 +48,7 @@ teardown() { rm -rf "$WORKSPACE"; }
 test_ensure_dirs_creates_all() {
   setup
   ensure_dirs
-  for d in models/checkpoints models/loras models/vae custom_nodes output datasets prompts; do
+  for d in models/checkpoints models/loras models/vae models/ipadapter models/clip_vision models/insightface custom_nodes output datasets prompts; do
     assert_dir "$WORKSPACE/$d" "ensure_dirs creates $d"
   done
   teardown

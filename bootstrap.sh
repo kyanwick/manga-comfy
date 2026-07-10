@@ -46,6 +46,23 @@ LORAS="
 https://civitai.com/api/download/models/1932613|anime_screencap-IllustriousV2.safetensors
 "
 
+# IPAdapter FaceID weights. url|dest_relative_path (relative to $WORKSPACE).
+#
+# NON-COMMERCIAL. IP-Adapter-FaceID requires InsightFace's buffalo_l face pack,
+# which is licensed for non-commercial research only. Generated images inherit
+# that restriction. Deliberate choice for Oberas, on record.
+#
+# The companion `*_lora.safetensors` is required by the FACEID PLUS V2 preset and
+# is NOT a style LoRA — do not apply the LORAS licence discipline to it.
+#
+# Unlike LORAS, the second field is a path relative to $WORKSPACE (not a bare
+# filename): entries land in ipadapter/, loras/, and clip_vision/ respectively.
+IPADAPTER="
+https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl.bin|models/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin
+https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl_lora.safetensors|models/loras/ip-adapter-faceid-plusv2_sdxl_lora.safetensors
+https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors|models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors
+"
+
 write_extra_model_paths() {
   # Non-destructive: points ComfyUI at the volume without touching its own
   # models/ directory. Overwriting this file is safe — bootstrap owns it.
@@ -55,6 +72,9 @@ manga_comfy:
   checkpoints: models/checkpoints
   loras: models/loras
   vae: models/vae
+  ipadapter: models/ipadapter
+  clip_vision: models/clip_vision
+  insightface: models/insightface
 EOF
 }
 
@@ -94,6 +114,11 @@ install_node_requirements() {
     echo "  pip install -r $req"
     pip install --quiet -r "$req"
   done
+  # IPAdapterInsightFaceLoader needs these; insightface auto-downloads buffalo_l
+  # into models/insightface at first use. A pip failure here (insightface often
+  # compiles a C extension) is left loud on purpose — set -euo pipefail aborts.
+  echo "  pip install insightface onnxruntime-gpu"
+  pip install --quiet insightface onnxruntime-gpu
 }
 
 main() {
@@ -126,6 +151,14 @@ main() {
     case "$url" in *civitai.com*) url="${url}?token=${CIVITAI_TOKEN:-}" ;; esac
     fetch_file "$url" "$dest"
   done <<< "$LORAS"
+
+  # IPAdapter FaceID: second field is a $WORKSPACE-relative path, not a filename.
+  while read -r line; do
+    [ -n "$line" ] || continue
+    url="${line%%|*}"
+    name="${line##*|}"
+    fetch_file "$url" "$WORKSPACE/$name"
+  done <<< "$IPADAPTER"
 
   write_extra_model_paths
   link_custom_nodes

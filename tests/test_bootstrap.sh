@@ -57,7 +57,7 @@ export CLONER="bash $WORKSPACE/stub_clone.sh"
 # --- Civitai needs an API token; without one, LoRAs skip loudly, never fatally.
 noTok="$(CIVITAI_TOKEN= bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"; noTokRc=$?
 assert_contains "$noTok" "SKIP anime_screencap" "no CIVITAI_TOKEN warns about the skipped LoRA"
-assert_contains "$noTok" "downloads=1" "no CIVITAI_TOKEN still downloads the checkpoint"
+assert_contains "$noTok" "downloads=4" "no CIVITAI_TOKEN still downloads the checkpoint and IPAdapter files"
 if [ "$noTokRc" -eq 0 ]; then echo "ok - missing CIVITAI_TOKEN is not fatal"
 else echo "FAIL: missing CIVITAI_TOKEN aborted bootstrap (rc=$noTokRc)" >&2; FAILURES=$((FAILURES + 1)); fi
 if [ -e "$WORKSPACE/models/loras/anime_screencap-IllustriousV2.safetensors" ]; then
@@ -69,9 +69,17 @@ rm -rf "$COMFY_DIR/custom_nodes"; mkdir -p "$COMFY_DIR/custom_nodes/ComfyUI-Mana
 
 export CIVITAI_TOKEN=test-token
 first="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
-assert_contains "$first" "downloads=2" "first run downloads the checkpoint and the style LoRA"
+assert_contains "$first" "downloads=5" "first run downloads the checkpoint, style LoRA, and three IPAdapter files"
 assert_contains "$first" "clones=4" "first run clones four node packs"
 assert_file "$COMFY_DIR/extra_model_paths.yaml" "bootstrap writes extra_model_paths.yaml"
+
+# IPAdapter FaceID weights land at their per-entry paths.
+assert_file "$WORKSPACE/models/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin" "IPAdapter FaceID model fetched to models/ipadapter"
+assert_file "$WORKSPACE/models/loras/ip-adapter-faceid-plusv2_sdxl_lora.safetensors" "IPAdapter FaceID companion LoRA fetched to models/loras"
+assert_file "$WORKSPACE/models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors" "CLIP vision encoder fetched to models/clip_vision"
+assert_file_contains "$COMFY_DIR/extra_model_paths.yaml" "ipadapter:" "extra_model_paths.yaml maps ipadapter"
+assert_file_contains "$COMFY_DIR/extra_model_paths.yaml" "clip_vision:" "extra_model_paths.yaml maps clip_vision"
+assert_file_contains "$COMFY_DIR/extra_model_paths.yaml" "insightface:" "extra_model_paths.yaml maps insightface"
 
 if [ -e "$COMFY_DIR/custom_nodes/ComfyUI-Manager/ComfyUI-Manager" ]; then
   echo "FAIL: symlink nested inside baked-in template dir instead of replacing it" >&2
@@ -87,7 +95,7 @@ assert_file_lacks "$FT_VENDORED" "CLIPFeatureExtractor" "FluxTrainer vendored fi
 second="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
 assert_contains "$second" "downloads=0" "second run downloads nothing"
 assert_contains "$second" "clones=0" "second run clones nothing"
-assert_contains "$second" "skips=6" "second run skips all six artifacts"
+assert_contains "$second" "skips=9" "second run skips all nine artifacts"
 
 # Idempotent: re-running must not double-mangle or fail. The patch finds no
 # CLIPFeatureExtractor matches on run 2 and rewrites nothing.
