@@ -32,8 +32,9 @@ ensure_dirs() {
 }
 
 # fetch_file <url> <dest>
-# Skips when dest exists and is non-empty. A zero-byte file means a previous
-# download died halfway; re-fetch it rather than trusting it.
+# Skips when dest exists and is non-empty. Downloads land in "$dest.part" and
+# are renamed onto dest only on success, so a download that dies halfway leaves
+# only a *.part file behind — dest never matches the -s guard until it is whole.
 fetch_file() {
   local url="$1" dest="$2"
   if [ -s "$dest" ]; then
@@ -42,7 +43,9 @@ fetch_file() {
   fi
   mkdir -p "$(dirname "$dest")"
   echo "  fetching $(basename "$dest") ..."
-  "$DOWNLOADER" "$dest" "$url"
+  local tmp="$dest.part"
+  "$DOWNLOADER" "$tmp" "$url" || return
+  mv -- "$tmp" "$dest"
   FETCH_DOWNLOADS=$((FETCH_DOWNLOADS + 1))
 }
 
@@ -55,6 +58,6 @@ fetch_node() {
   fi
   mkdir -p "$(dirname "$dest")"
   echo "  cloning $(basename "$dest") ..."
-  "$CLONER" "$url" "$dest"
+  "$CLONER" "$url" "$dest" || return
   FETCH_CLONES=$((FETCH_CLONES + 1))
 }

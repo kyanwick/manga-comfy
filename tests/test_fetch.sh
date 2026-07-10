@@ -28,6 +28,8 @@ assert_dir() {
 stub_download() { mkdir -p "$(dirname "$1")"; echo "fake-weights" > "$1"; }
 # Signature must match real usage: CLONER <url> <dest>
 stub_clone() { mkdir -p "$2/.git"; }
+# Simulates curl dying mid-transfer: writes partial bytes, exits non-zero.
+failing_download() { mkdir -p "$(dirname "$1")"; echo "partial" > "$1"; return 22; }
 
 setup() {
   WORKSPACE="$(mktemp -d)"
@@ -117,10 +119,29 @@ test_second_run_fetches_nothing() {
   teardown
 }
 
+test_fetch_file_recovers_after_failed_download() {
+  setup
+  DOWNLOADER=failing_download
+  if fetch_file "https://example.invalid/x" "$WORKSPACE/models/checkpoints/x"; then
+    echo "FAIL: fetch_file returned 0 on downloader failure" >&2
+    FAILURES=$((FAILURES + 1))
+  else
+    echo "ok - fetch_file propagates downloader failure"
+  fi
+  assert_eq "$FETCH_DOWNLOADS" "0" "failed download not counted"
+  DOWNLOADER=stub_download
+  fetch_reset_counters
+  fetch_file "https://example.invalid/x" "$WORKSPACE/models/checkpoints/x"
+  assert_eq "$FETCH_DOWNLOADS" "1" "re-downloads after a failed partial download"
+  assert_eq "$FETCH_SKIPS" "0" "does not skip a partial download"
+  teardown
+}
+
 test_ensure_dirs_creates_all
 test_fetch_file_downloads_when_missing
 test_fetch_file_skips_when_present
 test_fetch_file_redownloads_when_empty
+test_fetch_file_recovers_after_failed_download
 test_fetch_node_clones_when_missing
 test_fetch_node_skips_when_cloned
 test_second_run_fetches_nothing
