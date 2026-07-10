@@ -52,6 +52,21 @@ link_custom_nodes() {
   done
 }
 
+patch_fluxtrainer() {
+  # FluxTrainer vendors an old kohya sd-scripts that imports CLIPFeatureExtractor,
+  # removed in transformers v5. CLIPImageProcessor is the drop-in successor and
+  # exists in transformers 4.2x+, so this rewrite is safe on either version.
+  # Upstream fix: kohya-ss/sd-scripts PR #2315. Idempotent: a second run finds
+  # no matches and rewrites nothing.
+  local ft="$WORKSPACE/custom_nodes/ComfyUI-FluxTrainer" f
+  [ -d "$ft" ] || return 0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    sed -i 's/CLIPFeatureExtractor/CLIPImageProcessor/g' "$f"
+    echo "  patched $(basename "$f")"
+  done < <(grep -rl --include='*.py' 'CLIPFeatureExtractor' "$ft" 2>/dev/null || true)
+}
+
 install_node_requirements() {
   [ "${SKIP_PIP:-0}" = "1" ] && return 0
   local req
@@ -77,6 +92,7 @@ main() {
 
   write_extra_model_paths
   link_custom_nodes
+  patch_fluxtrainer
   install_node_requirements
 
   echo "==> downloads=$FETCH_DOWNLOADS clones=$FETCH_CLONES skips=$FETCH_SKIPS"

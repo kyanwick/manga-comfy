@@ -18,11 +18,15 @@ Download keepers to `F:`, never `C:`.
    expose port `8188`.
 2. In the pod terminal:
    ```bash
-   cd /workspace/repo && git pull && bash bootstrap.sh
+   source /workspace/venv/bin/activate
+   cd /workspace/repo && git pull && COMFY_DIR=/workspace/ComfyUI bash bootstrap.sh
    ```
+   Run it with the venv active: the official template runs ComfyUI from
+   `/workspace/venv`, so node `pip install`s must land there. ComfyUI lives at
+   `/workspace/ComfyUI` on that template (not `/ComfyUI`), hence `COMFY_DIR`.
    First ever run: `downloads=1 clones=4` (~7GB, several minutes).
    Every run after: `downloads=0 clones=0 skips=5` in seconds.
-   If ComfyUI is not at `/ComfyUI`: `COMFY_DIR=/workspace/ComfyUI bash bootstrap.sh`
+   Restart ComfyUI afterwards so `extra_model_paths.yaml` and any new nodes load.
 3. Open `https://<pod-id>-8188.proxy.runpod.net`
 4. Load `workflows/manga_txt2img.json`
 5. **Terminate the pod when done.** Not "Stop" — terminate. The volume keeps
@@ -62,6 +66,11 @@ The 24GB card exists for LoRA **training**. Inference doesn't need it.
 - **The volume is region-locked.** Pods must launch in its region.
 - **Illustrious v2.0 is the ceiling.** v3.0/v3.5 are Stardust-gated, and v3.5 is
   v-pred — not a drop-in swap. LoRAs trained here are eps LoRAs.
+- **FluxTrainer vs transformers v5.** The pod's venv ships transformers v5, which
+  removed `CLIPFeatureExtractor`; FluxTrainer vendors an old sd-scripts that
+  imports it. `bootstrap.sh` rewrites it to `CLIPImageProcessor` (upstream fix:
+  kohya-ss/sd-scripts PR #2315). Without that, its SDXL training nodes silently
+  fail to register.
 - **Never commit weights.** `.gitignore` blocks `*.safetensors`.
 - **Private repo.** Pod-side `git clone`/`pull` wants a fine-grained PAT
   (contents: read) for `kyanwick/manga-comfy`.

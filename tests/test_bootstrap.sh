@@ -17,6 +17,16 @@ assert_file() {
   else echo "FAIL: $2 (missing $1)" >&2; FAILURES=$((FAILURES + 1)); fi
 }
 
+assert_file_contains() {
+  if [ -f "$1" ] && grep -q "$2" "$1"; then echo "ok - $3"
+  else echo "FAIL: $3 ($1 lacked '$2')" >&2; FAILURES=$((FAILURES + 1)); fi
+}
+
+assert_file_lacks() {
+  if [ -f "$1" ] && ! grep -q "$2" "$1"; then echo "ok - $3"
+  else echo "FAIL: $3 ($1 still had '$2')" >&2; FAILURES=$((FAILURES + 1)); fi
+}
+
 WORKSPACE="$(mktemp -d)"
 COMFY_DIR="$(mktemp -d)"
 mkdir -p "$COMFY_DIR/custom_nodes"
@@ -32,6 +42,13 @@ mkdir -p "$(dirname "$1")"; echo "fake" > "$1"
 STUB
 cat > "$WORKSPACE/stub_clone.sh" <<'STUB'
 mkdir -p "$2/.git"
+case "$2" in
+  *ComfyUI-FluxTrainer)
+    mkdir -p "$2/library"
+    printf 'from transformers import CLIPFeatureExtractor, CLIPTextModel\n' > "$2/library/sdxl_lpw_stable_diffusion.py"
+    printf 'x = CLIPFeatureExtractor()\n' >> "$2/library/sdxl_lpw_stable_diffusion.py"
+    ;;
+esac
 STUB
 chmod +x "$WORKSPACE/stub_dl.sh" "$WORKSPACE/stub_clone.sh"
 export DOWNLOADER="bash $WORKSPACE/stub_dl.sh"
@@ -49,10 +66,19 @@ else
   echo "ok - baked-in template node dir replaced, not nested"
 fi
 
+FT_VENDORED="$WORKSPACE/custom_nodes/ComfyUI-FluxTrainer/library/sdxl_lpw_stable_diffusion.py"
+assert_file_contains "$FT_VENDORED" "CLIPImageProcessor" "FluxTrainer vendored file patched to CLIPImageProcessor"
+assert_file_lacks "$FT_VENDORED" "CLIPFeatureExtractor" "FluxTrainer vendored file no longer imports CLIPFeatureExtractor"
+
 second="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
 assert_contains "$second" "downloads=0" "second run downloads nothing"
 assert_contains "$second" "clones=0" "second run clones nothing"
 assert_contains "$second" "skips=5" "second run skips all five artifacts"
+
+# Idempotent: re-running must not double-mangle or fail. The patch finds no
+# CLIPFeatureExtractor matches on run 2 and rewrites nothing.
+assert_file_contains "$FT_VENDORED" "CLIPImageProcessor" "second run leaves CLIPImageProcessor in place"
+assert_file_lacks "$FT_VENDORED" "CLIPFeatureExtractor" "second run does not reintroduce CLIPFeatureExtractor"
 
 rm -rf "$WORKSPACE" "$COMFY_DIR"
 
