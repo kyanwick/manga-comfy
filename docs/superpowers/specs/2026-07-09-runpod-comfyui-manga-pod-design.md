@@ -420,10 +420,11 @@ Approximate; verify at purchase, RunPod pricing moves.
 
 ## Open questions
 
-- Read the actual `LICENSE` file on `OnomaAIResearch/Illustrious-XL-v2.0` before
-  shipping generated assets. Only the model card's license *tag*
-  (`creativeml-openrail-m`) has been verified, not the license text. Everything
-  commercial about this design rests on that tag being accurate.
+- ~~Read the actual `LICENSE` file on `OnomaAIResearch/Illustrious-XL-v2.0`~~
+  **Resolved 2026-07-09:** Kyan read the license text directly. Verdict: fine —
+  commercial use of generated outputs permitted, no share-alike obligation on
+  trained LoRAs beyond stock CreativeML OpenRAIL-M use-restrictions. Model
+  choice stands.
 - Which RunPod region has reliable 24GB availability
 - How many recurring DeenWell characters and settings exist (drives LoRA count,
   and the two-to-three-LoRA interference ceiling)
