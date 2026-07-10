@@ -93,3 +93,58 @@ character-centric composition and resist faceless framing. Start with negatives
 plus `from behind`, `facing away`, `silhouette`, `back turned`. If the model
 keeps producing faces, escalate to ControlNet — do not fight it with prompt
 weights.
+
+## Oberas screencap recipe — verified on-pod 2026-07-09
+
+Modern TV-anime look (Blue Lock / Jujutsu Kaisen register): thick clean lineart,
+flat cel shading with hard terminators, realistic adult proportions, lit face
+against dark bokeh.
+
+**Model:** Illustrious-XL-v2.0 + `anime_screencap-IllustriousV2.safetensors`
+**LoRA strength:** 0.8 model / 0.8 clip (0.6 is too weak, 1.0 crushes contrast)
+**Sampler:** euler_ancestral, normal, 30 steps, cfg 5.5
+**Latent:** 1024 x 1536
+
+Positive spine:
+
+```
+1boy, solo, mature male, adult, short beard, stubble, short black hair,
+calm serious expression, looking at viewer, close-up, face focus,
+source_anime, anime screencap, movie still, key visual, cel shading, clean lineart,
+soft key light, illuminated face, even lighting, natural skin tone,
+depth of field, blurry background, bokeh, <setting>,
+masterpiece, best quality, absurdres, newest
+```
+
+`source_anime, anime screencap` is the LoRA's own trigger. Keep it.
+
+Negative — the second half is load-bearing:
+
+```
+nsfw, lowres, worst quality, low quality, bad anatomy, bad hands, extra digits,
+watermark, signature, text, jpeg artifacts, blurry,
+1girl, female, child, chibi, moe, big eyes, sketch, painterly, soft shading,
+3d, photorealistic, realistic, photo,
+dark, underexposed, silhouette, backlighting, glowing eyes, red eyes
+```
+
+Two hard-won notes:
+
+- **Pushing `1girl, female, moe, big eyes` into the negative is what unlocks adult
+  male cel-shade.** Illustrious defaults to anime-waifu otherwise.
+- **`backlighting` + `dark background` + `high contrast` silhouette the face once
+  the LoRA is on.** The LoRA amplifies contrast. Light the face explicitly
+  (`soft key light, illuminated face, even lighting`) and put the darkness in the
+  *background* tags, not the lighting tags.
+
+### Face-transfer options — all NC except one
+
+| Route | Likeness | Licence |
+|---|---|---|
+| IPAdapter FaceID | medium | ❌ non-commercial (InsightFace face packs) |
+| InstantID | good | ❌ Apache code, but requires NC antelopev2 |
+| img2img from a photo | rough, one-off | ✅ clean |
+| **Personal character LoRA** | **strong, reusable** | ✅ **clean — dataset is you** |
+
+Anything touching InsightFace inherits non-commercial. For a monetised brand the
+only clean identity route is training a LoRA on your own photos.
