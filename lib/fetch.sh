@@ -44,8 +44,9 @@ fetch_file() {
   mkdir -p "$(dirname "$dest")"
   echo "  fetching $(basename "$dest") ..."
   local tmp="$dest.part"
-  "$DOWNLOADER" "$tmp" "$url" || return
-  mv -- "$tmp" "$dest"
+  # shellcheck disable=SC2086  # intentional word-split: may be a multi-word command
+  $DOWNLOADER "$tmp" "$url" || return
+  mv -- "$tmp" "$dest" || return
   FETCH_DOWNLOADS=$((FETCH_DOWNLOADS + 1))
 }
 
@@ -58,6 +59,7 @@ fetch_node() {
   fi
   mkdir -p "$(dirname "$dest")"
   echo "  cloning $(basename "$dest") ..."
-  "$CLONER" "$url" "$dest" || return
+  # shellcheck disable=SC2086  # intentional word-split: may be a multi-word command
+  $CLONER "$url" "$dest" || return
   FETCH_CLONES=$((FETCH_CLONES + 1))
 }
