@@ -2,9 +2,12 @@
 # Reconstructs a manga-comfy pod from the stock RunPod ComfyUI template.
 # Idempotent: safe to run on every pod start. Second run fetches nothing.
 #
-#   WORKSPACE   network volume mount     (default /workspace)
-#   COMFY_DIR   ComfyUI install location (default /ComfyUI)
-#   SKIP_PIP=1  skip node requirements   (tests)
+#   WORKSPACE       network volume mount     (default /workspace)
+#   COMFY_DIR       ComfyUI install location (default /ComfyUI)
+#   SKIP_PIP=1      skip node requirements   (tests)
+#   CIVITAI_TOKEN   API token for Civitai downloads (401 without it).
+#                   Create at https://civitai.com/user/account
+#                   Absent -> style LoRAs are skipped with a warning, not fatal.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -106,11 +109,22 @@ main() {
     fetch_node "$url" "$WORKSPACE/custom_nodes/$name"
   done <<< "$NODES"
 
+  local dest
   while read -r line; do
     [ -n "$line" ] || continue
     url="${line%%|*}"
     name="${line##*|}"
-    fetch_file "$url" "$WORKSPACE/models/loras/$name"
+    dest="$WORKSPACE/models/loras/$name"
+    # Civitai returns 401 for unauthenticated downloads. A missing token is not
+    # fatal — the pod generates fine on the base checkpoint — but never silent.
+    if [ ! -s "$dest" ] && [ -z "${CIVITAI_TOKEN:-}" ]; then
+      case "$url" in *civitai.com*)
+        echo "  SKIP $name — set CIVITAI_TOKEN to fetch style LoRAs (civitai.com/user/account)" >&2
+        continue ;;
+      esac
+    fi
+    case "$url" in *civitai.com*) url="${url}?token=${CIVITAI_TOKEN:-}" ;; esac
+    fetch_file "$url" "$dest"
   done <<< "$LORAS"
 
   write_extra_model_paths

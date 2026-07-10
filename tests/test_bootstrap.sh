@@ -54,6 +54,20 @@ chmod +x "$WORKSPACE/stub_dl.sh" "$WORKSPACE/stub_clone.sh"
 export DOWNLOADER="bash $WORKSPACE/stub_dl.sh"
 export CLONER="bash $WORKSPACE/stub_clone.sh"
 
+# --- Civitai needs an API token; without one, LoRAs skip loudly, never fatally.
+noTok="$(CIVITAI_TOKEN= bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"; noTokRc=$?
+assert_contains "$noTok" "SKIP anime_screencap" "no CIVITAI_TOKEN warns about the skipped LoRA"
+assert_contains "$noTok" "downloads=1" "no CIVITAI_TOKEN still downloads the checkpoint"
+if [ "$noTokRc" -eq 0 ]; then echo "ok - missing CIVITAI_TOKEN is not fatal"
+else echo "FAIL: missing CIVITAI_TOKEN aborted bootstrap (rc=$noTokRc)" >&2; FAILURES=$((FAILURES + 1)); fi
+if [ -e "$WORKSPACE/models/loras/anime_screencap-IllustriousV2.safetensors" ]; then
+  echo "FAIL: LoRA present despite no token" >&2; FAILURES=$((FAILURES + 1))
+else echo "ok - no LoRA fetched without a token"; fi
+# Reset so the real first-run assertions below see a clean slate.
+rm -rf "$WORKSPACE/models" "$WORKSPACE/custom_nodes"
+rm -rf "$COMFY_DIR/custom_nodes"; mkdir -p "$COMFY_DIR/custom_nodes/ComfyUI-Manager/js"
+
+export CIVITAI_TOKEN=test-token
 first="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
 assert_contains "$first" "downloads=2" "first run downloads the checkpoint and the style LoRA"
 assert_contains "$first" "clones=4" "first run clones four node packs"

@@ -19,6 +19,7 @@ Download keepers to `F:`, never `C:`.
 2. In the pod terminal:
    ```bash
    source /workspace/venv/bin/activate
+   export CIVITAI_TOKEN=<your-token>   # civitai.com/user/account
    cd /workspace/repo && git pull && COMFY_DIR=/workspace/ComfyUI bash bootstrap.sh
    ```
    Run it with the venv active: the official template runs ComfyUI from
@@ -71,6 +72,8 @@ The 24GB card exists for LoRA **training**. Inference doesn't need it.
   imports it. `bootstrap.sh` rewrites it to `CLIPImageProcessor` (upstream fix:
   kohya-ss/sd-scripts PR #2315). Without that, its SDXL training nodes silently
   fail to register.
+- **Civitai needs a token.** Downloads 401 without `CIVITAI_TOKEN`. Absent, style
+  LoRAs are skipped with a warning and the pod still works on the base checkpoint.
 - **Never commit weights.** `.gitignore` blocks `*.safetensors`.
 - **LoRA licence discipline.** Anything added to `LORAS` in `bootstrap.sh` must declare
   `allowCommercialUse: Image` on Civitai AND have no NoobAI in its lineage — NoobAI
