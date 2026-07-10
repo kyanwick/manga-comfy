@@ -3,6 +3,8 @@
 #
 # Sourceable: defines functions and counters, performs no work on import.
 # DOWNLOADER and CLONER are injectable so tests can stub them.
+# Their command strings are word-split at invocation (may be multi-word, e.g.
+# "bash /path/stub.sh"), so individual tokens must not contain spaces.
 #
 #   DOWNLOADER <dest> <url>
 #   CLONER     <url> <dest>

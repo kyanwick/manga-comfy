@@ -20,6 +20,8 @@ assert_file() {
 WORKSPACE="$(mktemp -d)"
 COMFY_DIR="$(mktemp -d)"
 mkdir -p "$COMFY_DIR/custom_nodes"
+# Simulate a stock template with a baked-in node pack — bootstrap must replace it, not nest into it.
+mkdir -p "$COMFY_DIR/custom_nodes/ComfyUI-Manager/js"
 export WORKSPACE COMFY_DIR
 export SKIP_PIP=1
 
@@ -38,6 +40,13 @@ first="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
 assert_contains "$first" "downloads=1" "first run downloads the checkpoint"
 assert_contains "$first" "clones=4" "first run clones four node packs"
 assert_file "$COMFY_DIR/extra_model_paths.yaml" "bootstrap writes extra_model_paths.yaml"
+
+if [ -e "$COMFY_DIR/custom_nodes/ComfyUI-Manager/ComfyUI-Manager" ]; then
+  echo "FAIL: symlink nested inside baked-in template dir instead of replacing it" >&2
+  FAILURES=$((FAILURES + 1))
+else
+  echo "ok - baked-in template node dir replaced, not nested"
+fi
 
 second="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
 assert_contains "$second" "downloads=0" "second run downloads nothing"

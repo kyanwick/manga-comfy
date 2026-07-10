@@ -12,6 +12,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/fetch.sh"
 
 COMFY_DIR="${COMFY_DIR:-/ComfyUI}"
+[ -e "$COMFY_DIR/main.py" ] || [ "${SKIP_PIP:-0}" = "1" ] || {
+  echo "COMFY_DIR=$COMFY_DIR does not look like a ComfyUI install (no main.py)" >&2
+  exit 1
+}
 
 CHECKPOINT_NAME="Illustrious-XL-v2.0.safetensors"
 CHECKPOINT_URL="https://huggingface.co/OnomaAIResearch/Illustrious-XL-v2.0/resolve/main/${CHECKPOINT_NAME}"
@@ -36,11 +40,15 @@ EOF
 }
 
 link_custom_nodes() {
-  local dir name
+  local dir name target
   for dir in "$WORKSPACE"/custom_nodes/*/; do
     [ -d "$dir" ] || continue
     name="$(basename "$dir")"
-    ln -sfn "${dir%/}" "$COMFY_DIR/custom_nodes/$name"
+    target="$COMFY_DIR/custom_nodes/$name"
+    if [ -d "$target" ] && [ ! -L "$target" ]; then
+      rm -rf -- "$target"   # template's baked-in copy; the volume clone is canonical
+    fi
+    ln -sfT "${dir%/}" "$target"
   done
 }
 
