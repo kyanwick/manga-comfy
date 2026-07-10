@@ -14,12 +14,19 @@ character looking like themselves from panel 1 to panel 40.
 ## Goal
 
 A hosted ComfyUI on RunPod, reachable in a browser, with the models and nodes
-needed to generate anime/manga-comic panels for both brands. Explicitly **not** a
-platform, batch API, or automation layer — that comes later, if at all.
+needed to **generate** anime/manga-comic panels for both brands and to **train**
+the character and setting LoRAs that keep them consistent — both in the same
+interface.
+
+A chapter's worth of prompts can be queued from a text file. Explicitly **not** an
+API, service, or automation layer wrapping any of it — that comes later, if at
+all.
 
 ## Non-goals
 
-- Batch prompt ingestion from the prompter skills (later)
+- **Programmatic** batch — skills write prompts, something POSTs `/prompt`, polls,
+  pulls from S3. That is the platform. (File-driven batch *is* in scope; see
+  "Batch generation" below.)
 - Video / motion generation (later)
 - Integration with `oberas-reels` Remotion assembly (later)
 - Any dependency on ALETHIA work repos (`clipping-comfy-worker`, `clipping-pipeline-*`)
@@ -33,18 +40,21 @@ Two RunPod objects, split by lifetime. The pod holds nothing durable.
 │  /workspace/models/checkpoints/   Illustrious-XL-v2.0                   │
 │  /workspace/models/loras/         character + setting LoRAs             │
 │  /workspace/models/vae/                                                 │
-│  /workspace/custom_nodes/         ComfyUI-Manager, safety checker       │
+│  /workspace/custom_nodes/         Manager, Inspire, WD14, FluxTrainer   │
 │  /workspace/output/               generated plates                      │
 │  /workspace/datasets/             LoRA training images                  │
+│  /workspace/prompts/              one .txt per chapter / episode        │
 │  /workspace/bootstrap.sh                                                │
 └─────────────────────────────────────────────────────────────────────────┘
                           ▲ mounted at /workspace
 ┌─ On-demand GPU pod  (disposable, 24GB, terminated when idle) ───────────┐
 │  RunPod official ComfyUI template                                       │
 │  ComfyUI  :8188  →  https://<pod-id>-8188.proxy.runpod.net              │
-│  kohya_ss / ai-toolkit  (LoRA training, invoked via shell)              │
+│    · generation AND LoRA training, same UI, same node graph             │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+One service, one port. Training is a workflow, not a second program.
 
 Terminate the pod when not working; pay only volume storage. Next session: new
 pod, same volume, run `bootstrap.sh`, back to work.
@@ -79,6 +89,20 @@ Chosen over v0.1 / v1.0 after reading [arXiv:2409.19946](https://arxiv.org/abs/2
 v2.0 is the only version that is simultaneously high-resolution, natural-language
 capable, and cleanly licensed for commercial use.
 
+**v2.0 is also the ceiling.** Onoma's site advertises v3.0 EPS, v3.0 VPred, v3.5
+VPred, and Illustrious LU — but the `OnomaAIResearch` HuggingFace org publishes
+only early-release-v0, v1.0, v1.1, v2.0, and Lumina-v0.03. Everything above v2.0
+is behind Onoma's **"Stardust"** sponsorship gate: weights open once a
+crowdfunding threshold is met, and the threshold rises for 3.5vpred and later.
+Those versions are usable *on their platform*, not downloadable.
+
+Two consequences:
+
+- Choosing v2.0 is not a compromise. It is the newest openly-available version.
+- If v3.5 ever opens, it is **not a drop-in swap**. It is v-prediction, not
+  epsilon: different sampler/scheduler config in ComfyUI, and eps-trained LoRAs
+  do not transfer cleanly. Any LoRA trained under this design is an eps LoRA.
+
 Rejected: **NoobAI-XL**, whose license §II states "We prohibit any form of
 commercialization, including but not limited to monetization or commercial use of
 the model, derivative models, **or model-generated products**." That last clause
@@ -109,6 +133,48 @@ Scaffold lives in this repo as a template. Tag block first, natural-language bod
 after — v2.0's multi-level caption training accepts both, so existing
 natural-language prompts from the prompter skills do **not** need rewriting into
 pure tags.
+
+## Batch generation
+
+In scope, because it costs one custom node.
+
+ComfyUI's `batch_size` (on Empty Latent) runs N latents through **one** forward
+pass with the **same** prompt — VRAM scales ×N, realistically capping around 4 at
+1536×1024 on 24GB. Useless for a chapter.
+
+What a chapter needs is N sequential runs with N *different* prompts. ComfyUI core
+cannot do this; the native queue re-runs the same workflow. Inspire Pack's own
+docs state it plainly: *"You cannot apply a separate prompt to each batch using
+the batch parameter; if you want to apply different prompts, you need to use the
+list method."*
+
+**`Load Prompts From File (Inspire)`** reads a `.txt` of positive/negative prompts
+separated by dashed lines and emits a `ZIPPED_PROMPT` list. Paste a prompter
+skill's output into `/workspace/prompts/deenwell_ch03.txt`, queue once, walk away.
+
+Two details that bite otherwise:
+
+- **Seed must be `increment`, not `fixed`** — or 40 different prompts share one
+  noise seed and produce suspiciously similar compositions.
+- **`SaveImage` `filename_prefix`** like `oberas/ep12/panel_` — the prompt file's
+  line order is the panel order. Nothing else preserves it.
+
+### One workflow, two modes
+
+Oberas is DeenWell minus the LoRA loaders. Bypass them (`Ctrl+B`; `mode: 4` in
+saved JSON) rather than maintaining a second workflow that drifts.
+
+```
+Load Prompts From File ──┐
+                         ├─→ CLIP Encode ─→ KSampler ─→ Save Image
+Checkpoint (Illustrious) ─┤                    ↑
+LoraLoader (character) ───┤  ← bypass for Oberas
+LoraLoader (setting)   ───┘  ← bypass for Oberas
+Empty Latent ─────────────────────────────────┘
+   1536×1024  Oberas (3:2, pans to 9:16)
+   1024×1536  DeenWell covers (9:16)
+   1216×1216  DeenWell square
+```
 
 ### Safety
 
@@ -153,11 +219,61 @@ as prompt weight shifts — panel 3 and panel 30 diverge.
 
 ### LoRA training
 
+Runs **inside ComfyUI**, not as a second service.
+
+[`kijai/ComfyUI-FluxTrainer`](https://github.com/kijai/ComfyUI-FluxTrainer) wraps
+kohya's `sd-scripts` as ComfyUI nodes and — despite the name — ships dedicated
+**SDXL** training nodes (widely used for PonyXL; Illustrious is the same family).
+Captioning uses a **WD14 Tagger** node. The whole loop lives in one interface:
+
+```
+WD14 Tagger  →  FluxTrainer SDXL nodes  →  /workspace/models/loras/  →  LoraLoader
+ (auto-tag)         (train)                    (LoRA lands here)        (generate)
+```
+
+The trained `.safetensors` writes straight into the folder ComfyUI already reads.
+Training becomes another workflow JSON beside `manga_txt2img.json`.
+
+Parameters:
+
 - 20–40 images per character
 - 1500–3000 steps; convergence around 3000 on Illustrious
 - Save every 5 epochs, compare 5/10/15/20, pick the sweet spot
 - Mixed-source images prevent style lock-in (too few images from one source and
   the LoRA memorizes pose and style rather than the character)
+
+**Known costs.** FluxTrainer is a wrapper and SDXL is its secondary target;
+node-graph training is fiddlier than a GUI when iterating on hyperparameters. Fine
+for a handful of characters, poor for tuning twenty. ComfyUI must free the
+checkpoint from VRAM before a training run — expect to unload or restart between
+generating and training.
+
+**Fallback, not a rewrite:** the community RunPod template *"Stable Diffusion
+Kohya_ss ComfyUI Ultimate"* ships kohya_ss on `:3010` and ComfyUI on `:3020`. If
+node-based training frustrates within the first hour, switch. It also drags along
+A1111 and someone else's unversioned template, which is the unreproducibility
+`bootstrap.sh` exists to avoid.
+
+### Rejected: hosted training
+
+**ILXL's own LoRA trainer** (announced 2025-12-11) trains a character for you and
+never lets go of it. Its eight-step tutorial runs upload → auto-tag → train →
+preview → thumbnail → *use it in ILXL generation*. There is no export step, and
+the docs state "the LoRA model is only applied when you select it through Add
+LoRA." Reinforced by the credit design: **Stellar** (the LoRA-training credit)
+converts only from **Purchased** Stardust, never free Stardust. It is a closed
+loop that monetizes generation on their platform. A LoRA that cannot leave their
+web UI cannot reach ComfyUI.
+
+Also noted: their step ceiling is 100–2,000, below the ~3,000 where Illustrious
+character LoRAs converge locally.
+
+**Civitai's on-site trainer** does export `.safetensors` and is a technically
+valid path. Rejected on non-technical grounds: it means uploading DeenWell
+character sheets — Prophetic-era companions, Islamic historical figures — to a
+platform whose Illustrious ecosystem is overwhelmingly NSFW. Training on our own
+pod is the only option where the dataset never leaves infrastructure we rent
+directly. This is a values call, and it is deliberate.
 
 **Dataset bootstrap.** Training needs 20–40 consistent images of a character that
 doesn't exist yet. The escape is the existing `banana-pro-director` skill: locked
@@ -195,14 +311,30 @@ A chapter with two characters in one recurring location is the stress case.
 
 ## Consequences of the consistency requirement
 
-LoRA training is **not** ComfyUI — it is `kohya_ss` / `ai-toolkit` / OneTrainer:
-different dependencies, 16–24GB VRAM, 30–90 min per character on a 4090.
+Training is 30–90 min per character on a 4090 and wants 16–24GB VRAM.
 
-Therefore:
+- The pod needs a **24GB card**, not a cheap 16GB one. **Inference does not need
+  this — training does.** With 8-bit Adam and gradient checkpointing SDXL LoRA
+  fits in 12–16GB, but you fight for it. If character consistency is ever
+  abandoned, the card gets cheaper the same day.
+- `bootstrap.sh` installs custom node packs rather than a second service: Inspire
+  Pack (batch prompts), WD14 Tagger (captions), FluxTrainer (training) — plus
+  ComfyUI-Manager if the base template lacks it.
+- DeenWell is why. Oberas alone would run on 16GB with no trainer at all.
 
-- The pod needs a **second service** in `bootstrap.sh`
-- The pod needs a **24GB card**, not a cheap 16GB one
-- "Just a hosted ComfyUI" is no longer strictly accurate, and DeenWell is why
+### Local machine footprint
+
+Deliberately near-zero. C: has ~50GB free and must stay that way.
+
+| Lives where | What |
+|---|---|
+| RunPod volume | 7GB checkpoint, LoRAs, custom nodes, datasets, all output |
+| RunPod pod | ComfyUI, Python, CUDA, the GPU |
+| **Local C:** | **this repo — scripts, JSON, markdown. Under 1MB.** |
+| Local F: | downloaded keepers only (~120MB per 40-panel chapter) |
+
+No local ComfyUI, no local model, no local Python env, no local training. Leave
+output on the volume; sync down selects only, to F:.
 
 ## Known constraints
 
@@ -240,14 +372,25 @@ batch layer will need an async submit/poll pattern.
 `C:\localhost\manga-comfy` — personal, deliberately outside `C:\ALETHIA\Repos`.
 
 ```
-bootstrap.sh              idempotent model + node + trainer fetch
+bootstrap.sh              idempotent fetch: checkpoint + 3 custom nodes
 workflows/
-  manga_txt2img.json      the one workflow
+  manga_txt2img.json      generation; LoRA branch bypassable for Oberas
+  lora_train.json         WD14 tag → FluxTrainer SDXL
 prompts/
   scaffold.md             tag order + pinned negative prompt
+  example_chapter.txt     Load-Prompts-From-File format reference
 docs/superpowers/specs/   this document
 README.md                 pod create → attach volume → bootstrap → open :8188
 ```
+
+Custom nodes installed by `bootstrap.sh`:
+
+| Node pack | Purpose |
+|---|---|
+| ComfyUI-Manager | node management |
+| ComfyUI-Inspire-Pack | `Load Prompts From File` — batch |
+| ComfyUI-WD14-Tagger | auto-captioning training datasets |
+| ComfyUI-FluxTrainer | SDXL LoRA training nodes |
 
 ## Verification
 
@@ -278,8 +421,9 @@ Approximate; verify at purchase, RunPod pricing moves.
 ## Open questions
 
 - Read the actual `LICENSE` file on `OnomaAIResearch/Illustrious-XL-v2.0` before
-  shipping generated assets
+  shipping generated assets. Only the model card's license *tag*
+  (`creativeml-openrail-m`) has been verified, not the license text. Everything
+  commercial about this design rests on that tag being accurate.
 - Which RunPod region has reliable 24GB availability
-- `kohya_ss` vs `ai-toolkit` — not yet evaluated
 - How many recurring DeenWell characters and settings exist (drives LoRA count,
   and the two-to-three-LoRA interference ceiling)
