@@ -1,8 +1,19 @@
 # Prompt scaffold — Illustrious-XL v2.0
 
-Tag block first, natural-language body after. v2.0's multi-level caption training
-accepts both; the tag order below is the order the model was trained on
-(arXiv:2409.19946).
+**Tags only. No sentences.** Verified on-pod 2026-07-09: appending two lines of
+prose to a `1girl, solo` prompt made the model render an empty marketplace with
+**no person in it**, in soft painterly mush. The identical scene as pure tags
+produced the girl, in clean anime linework. Short prose at cfg 7.0 kept the
+figure but shrank it to the frame edge and hallucinated glyphs in the corner.
+
+The paper's multi-level captioning does not mean prose *competes well* — SDXL's
+CLIP truncates at 77 tokens per chunk, and every word of narrative steals
+attention from the subject tags.
+
+This is why `oberas-image-prompter-v2` output cannot be pasted in directly: it
+emits Midjourney prose. Each beat must be **translated** into a tag block.
+
+Tag order below is the order the model was trained on (arXiv:2409.19946).
 
 ## Order
 
@@ -10,14 +21,48 @@ accepts both; the tag order below is the order the model was trained on
 
 ## Positive template
 
-```
-1girl, solo, <character_lora_trigger>, rating_safe, <general tags>, masterpiece, best quality, absurdres, newest,
+Comma-separated tags, ~20–40 of them. No verbs in sentences.
 
-<natural-language scene description from the prompter skill>
+```
+<count>, solo, <hair/identity>, <clothing>, <pose/action>, <camera/framing>,
+<setting>, <time/lighting>, masterpiece, best quality, absurdres, newest
+```
+
+Worked example (rendered a real figure at 1024×1536):
+
+```
+1girl, solo, brown hair, hijab, long coat, standing, from behind,
+wide shot, desert marketplace, market stall, awning, crowd,
+dawn, sunset, golden hour, backlighting,
+masterpiece, best quality, absurdres, newest
 ```
 
 Swap `1girl` / `1boy` / `2boys` / `no humans` to match the panel.
 `no humans` is the correct opener for landscape, architecture, and object plates.
+
+## Period drift — the sparse-concept problem
+
+Danbooru has anime slice-of-life markets, not 7th-century Arabian ones. Left
+alone, `desert marketplace` renders as a **Parisian square** with Haussmann
+façades and modern coats; `lantern` becomes a Victorian lamppost. The paper names
+this: sparse concepts with thin training data degrade.
+
+Pin the period explicitly in positives — `arabian`, `middle eastern`,
+`adobe architecture`, `mudbrick`, `desert town`, `medieval`, `robe`, `turban` —
+and push back in the negative:
+
+```
+modern, contemporary clothing, city, skyscraper, european architecture,
+cobblestone street, streetlamp, power lines
+```
+
+If tags alone can't hold the period, ControlNet is the lever. Do not fight it
+with prompt weights.
+
+## Resolution
+
+Generate **1024 × 1536** (native 9:16). The old 3:2-then-pan plan was a Midjourney
+habit — there is no reason to crop when you can render the target ratio directly.
 
 ## Pinned negative — do not omit
 
