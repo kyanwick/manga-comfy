@@ -69,7 +69,7 @@ rm -rf "$COMFY_DIR/custom_nodes"; mkdir -p "$COMFY_DIR/custom_nodes/ComfyUI-Mana
 
 export CIVITAI_TOKEN=test-token
 first="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
-assert_contains "$first" "downloads=5" "first run downloads the checkpoint, style LoRA, and three IPAdapter files"
+assert_contains "$first" "downloads=6" "first run downloads the checkpoint, two style LoRAs, and three IPAdapter files"
 assert_contains "$first" "clones=4" "first run clones four node packs"
 assert_file "$COMFY_DIR/extra_model_paths.yaml" "bootstrap writes extra_model_paths.yaml"
 
@@ -95,7 +95,7 @@ assert_file_lacks "$FT_VENDORED" "CLIPFeatureExtractor" "FluxTrainer vendored fi
 second="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
 assert_contains "$second" "downloads=0" "second run downloads nothing"
 assert_contains "$second" "clones=0" "second run clones nothing"
-assert_contains "$second" "skips=9" "second run skips all nine artifacts"
+assert_contains "$second" "skips=10" "second run skips all ten artifacts"
 
 # Idempotent: re-running must not double-mangle or fail. The patch finds no
 # CLIPFeatureExtractor matches on run 2 and rewrites nothing.

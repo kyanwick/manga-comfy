@@ -42,8 +42,17 @@ https://github.com/kijai/ComfyUI-FluxTrainer.git|ComfyUI-FluxTrainer
 #
 #   Fine Anime Screencap XL, Illustrious v2.0 build (civitai model 345962)
 #   allowCommercialUse: {Image,RentCivit,Rent} — verified 2026-07-09
+#
+#   Kimetsu no Yaiba (Demon Slayer) Anime Style, ilxl-v0.1 build (civitai 421263)
+#   allowCommercialUse: {Image,RentCivit,Rent} — verified 2026-07-09
+#   trigger word: kimetsu_no_yaiba_style
+#   Chosen over "Demon Slayer Style" (2039459) and "Ufotable style" (1886114):
+#   both are {RentCivit} only — no Image right, so their output is unusable.
+#   Trained on Illustrious v0.1, applied to our v2.0 base — cross-version, so
+#   expect to tune strength rather than assume 1.0.
 LORAS="
 https://civitai.com/api/download/models/1932613|anime_screencap-IllustriousV2.safetensors
+https://civitai.com/api/download/models/1105108|kimetsu_no_yaiba_style_ilxl.safetensors
 "
 
 # IPAdapter FaceID weights. url|dest_relative_path (relative to $WORKSPACE).
