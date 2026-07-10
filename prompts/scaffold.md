@@ -1,17 +1,27 @@
 # Prompt scaffold — Illustrious-XL v2.0
 
-**Tags only. No sentences.** Verified on-pod 2026-07-09: appending two lines of
-prose to a `1girl, solo` prompt made the model render an empty marketplace with
-**no person in it**, in soft painterly mush. The identical scene as pure tags
-produced the girl, in clean anime linework. Short prose at cfg 7.0 kept the
-figure but shrank it to the frame edge and hallucinated glyphs in the corner.
+**CORRECTION 2026-07-10 — my earlier "tags only, no sentences" rule was wrong.**
 
-The paper's multi-level captioning does not mean prose *competes well* — SDXL's
-CLIP truncates at 77 tokens per chunk, and every word of narrative steals
-attention from the subject tags.
+Onoma's v2.0 release notes state: *"The model itself is highly compatible with
+natural language sentences – it is far more robust, it is less likely to generate
+multiple views or nonsense outputs."*
 
-This is why `oberas-image-prompter-v2` output cannot be pasted in directly: it
-emits Midjourney prose. Each beat must be **translated** into a tag block.
+What I actually tested on 2026-07-09 was a **hybrid**: a tag block with two lines
+of prose appended. That deleted the subject. A **pure** natural-language paragraph
+(Onoma's own format, quality tags at the tail) does not — verified 2026-07-10, the
+subject appeared, centred, in frame.
+
+Current understanding, from a same-seed A/B:
+
+- **Tags win on subject fidelity.** Prose ignored `bearded`, `hood pushed back`,
+  `warm light`; tags honoured all three.
+- **Prose wins on composition.** It centres the subject naturally.
+- **Do not mix them.** The hybrid is what breaks.
+
+**Also: v2.0 is an untuned base.** Onoma: *"The model itself is not trained with
+aesthetic set... we release an 'untuned' base version, which should work as better
+merging / training bases."* Raw v2.0 is a training substrate. A style LoRA is the
+intended usage, not a workaround.
 
 Tag order below is the order the model was trained on (arXiv:2409.19946).
 
@@ -100,10 +110,14 @@ Modern TV-anime look (Blue Lock / Jujutsu Kaisen register): thick clean lineart,
 flat cel shading with hard terminators, realistic adult proportions, lit face
 against dark bokeh.
 
-**Model:** Illustrious-XL-v2.0 + `anime_screencap-IllustriousV2.safetensors`
-**LoRA strength:** 0.8 model / 0.8 clip (0.6 is too weak, 1.0 crushes contrast)
-**Sampler:** euler_ancestral, normal, 30 steps, cfg 5.5
-**Latent:** 1024 x 1536
+**Model:** Illustrious-XL-v2.0 + `anime_screencap-IllustriousV2.safetensors` @ 1.0
+**Sampler:** `dpmpp_2s_ancestral_cfg_pp`, normal, 28 steps, **cfg 6.5**
+**Latent:** **1248 x 1824** (2.3 MP)
+
+Superseded 2026-07-10. Previously euler_ancestral / cfg 5.5 / 1024x1536 — that is
+**30% below the model's native resolution** and the wrong sampler. v2.0 supports
+512-1536 with w/h multiples of 32, up to 1:10 aspect; Onoma's own example runs
+1824x1248. Their reference sampler is DPM++ 2S Ancestral CFG++, cfg ~6.5.
 
 Positive spine:
 
@@ -132,15 +146,18 @@ Caution: with `pale color` removed from the picture, saturation rises. At cfg 6.
 plus `illuminated face`, highlights clip — creams blow out and colours go
 radioactive. Drop to cfg ~5.0 for closeups.
 
-Negative — the second half is load-bearing:
+Negative — **short**. Onoma's own example uses five words.
 
 ```
-nsfw, lowres, worst quality, low quality, bad anatomy, bad hands, extra digits,
-watermark, signature, text, jpeg artifacts, blurry,
-1girl, female, child, chibi, moe, big eyes, sketch, painterly, soft shading,
-3d, photorealistic, realistic, photo,
-dark, underexposed, silhouette, backlighting, glowing eyes, red eyes
+worst quality, bad quality, text, watermark, signature
 ```
+
+Add only what a specific shot proves it needs, e.g. `glowing eyes` for a
+face-lit-from-below closeup, `modern, european architecture` for a period shot.
+
+A 25-word negative accreted over one day of guessing produced **worse** images
+than this five-word one. Verified same-seed 2026-07-10. Stop fighting the model
+with tags it does not need.
 
 Two hard-won notes:
 
@@ -162,3 +179,16 @@ Two hard-won notes:
 
 Anything touching InsightFace inherits non-commercial. For a monetised brand the
 only clean identity route is training a LoRA on your own photos.
+
+
+## Composition — subject always, centred
+
+Verified 2026-07-10. A frame with no subject at its focal point reads as empty.
+
+- Positive: `centered, subject focus`, plus a concrete subject even on landscape
+  plates (a lone figure, a lantern, a doorway).
+- **Prop stacking deletes people.** `panel_03` with 8 prop nouns lost its figure
+  entirely; the same subject with 2 prop nouns rendered perfectly. Depth on figure
+  shots comes from *light and terrain*, not object count. Save the prop pile for
+  `no humans` plates.
+- Shot mix that reads well: roughly **70% wide / 20% medium / 10% close**.
