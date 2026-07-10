@@ -570,11 +570,11 @@ git commit -m "feat: bootstrap.sh reconstructs pod from stock ComfyUI template"
 
 In the RunPod console, open **Storage → New Network Volume**. Before choosing, open **Secure Cloud → GPUs** and check RTX 4090 / A5000 availability per datacenter. The volume pins you to one region permanently; a cheap region with no cards is worse than a costlier one with stock.
 
-- [ ] **Step 2: Create a 50GB volume**
+- [ ] **Step 2: Create a 100GB volume**
 
-Name: `manga-comfy`. Size: **50 GB**.
+Name: `manga-comfy`. Size: **100 GB** (the official ComfyUI template installs itself onto the volume and enforces this minimum).
 
-Sizing: 7GB checkpoint + ~2GB nodes + ~200MB per LoRA + datasets + output. 50GB is roughly $3.50/month.
+Sizing: the official ComfyUI template installs itself onto the volume (~20GB with the PyTorch env) and enforces a 100GB minimum; plus 7GB checkpoint + ~2GB nodes + ~200MB per LoRA + datasets + output. 100GB is roughly $7/month.
 
 - [ ] **Step 3: Observable check**
 
@@ -1140,7 +1140,7 @@ VRAM ×N.
 
 | | |
 |---|---|
-| Network volume, 50GB | ~$3.50/month, always |
+| Network volume, 100GB | ~$7/month, always |
 | 24GB pod | ~$0.30–0.70/hour, only while running |
 
 The 24GB card exists for LoRA **training**. Inference doesn't need it.

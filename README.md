@@ -49,7 +49,7 @@ VRAM ×N.
 
 | | |
 |---|---|
-| Network volume, 50GB | ~$3.50/month, always |
+| Network volume, 100GB | ~$7/month, always |
 | 24GB pod | ~$0.30–0.70/hour, only while running |
 
 The 24GB card exists for LoRA **training**. Inference doesn't need it.
