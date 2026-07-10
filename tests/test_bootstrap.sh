@@ -20,6 +20,7 @@ assert_file() {
 WORKSPACE="$(mktemp -d)"
 COMFY_DIR="$(mktemp -d)"
 mkdir -p "$COMFY_DIR/custom_nodes"
+touch "$COMFY_DIR/main.py"   # bootstrap sanity-checks this
 # Simulate a stock template with a baked-in node pack — bootstrap must replace it, not nest into it.
 mkdir -p "$COMFY_DIR/custom_nodes/ComfyUI-Manager/js"
 export WORKSPACE COMFY_DIR

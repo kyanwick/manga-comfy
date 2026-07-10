@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/fetch.sh"
 
 COMFY_DIR="${COMFY_DIR:-/ComfyUI}"
-[ -e "$COMFY_DIR/main.py" ] || [ "${SKIP_PIP:-0}" = "1" ] || {
+[ -e "$COMFY_DIR/main.py" ] || {
   echo "COMFY_DIR=$COMFY_DIR does not look like a ComfyUI install (no main.py)" >&2
   exit 1
 }
