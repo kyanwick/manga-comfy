@@ -27,6 +27,22 @@ https://github.com/pythongosssss/ComfyUI-WD14-Tagger.git|ComfyUI-WD14-Tagger
 https://github.com/kijai/ComfyUI-FluxTrainer.git|ComfyUI-FluxTrainer
 "
 
+# Style LoRAs. url|filename
+#
+# LICENSE DISCIPLINE — read before adding a line here.
+# Every LoRA must (a) declare allowCommercialUse including "Image" on Civitai,
+# and (b) have NO NoobAI in its lineage. NoobAI's licence forbids commercial use
+# of *model-generated products*, which would poison every Oberas frame shipped.
+# Check the FILENAME, not just the version label: this same LoRA's newest build
+# is `anime_screencap-IL-NOOB_v3.safetensors` — contaminated. The v2.0 build
+# below matches our base checkpoint and is clean.
+#
+#   Fine Anime Screencap XL, Illustrious v2.0 build (civitai model 345962)
+#   allowCommercialUse: {Image,RentCivit,Rent} — verified 2026-07-09
+LORAS="
+https://civitai.com/api/download/models/1932613|anime_screencap-IllustriousV2.safetensors
+"
+
 write_extra_model_paths() {
   # Non-destructive: points ComfyUI at the volume without touching its own
   # models/ directory. Overwriting this file is safe — bootstrap owns it.
@@ -89,6 +105,13 @@ main() {
     name="${line##*|}"
     fetch_node "$url" "$WORKSPACE/custom_nodes/$name"
   done <<< "$NODES"
+
+  while read -r line; do
+    [ -n "$line" ] || continue
+    url="${line%%|*}"
+    name="${line##*|}"
+    fetch_file "$url" "$WORKSPACE/models/loras/$name"
+  done <<< "$LORAS"
 
   write_extra_model_paths
   link_custom_nodes

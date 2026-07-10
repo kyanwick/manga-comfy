@@ -55,7 +55,7 @@ export DOWNLOADER="bash $WORKSPACE/stub_dl.sh"
 export CLONER="bash $WORKSPACE/stub_clone.sh"
 
 first="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
-assert_contains "$first" "downloads=1" "first run downloads the checkpoint"
+assert_contains "$first" "downloads=2" "first run downloads the checkpoint and the style LoRA"
 assert_contains "$first" "clones=4" "first run clones four node packs"
 assert_file "$COMFY_DIR/extra_model_paths.yaml" "bootstrap writes extra_model_paths.yaml"
 
@@ -73,7 +73,7 @@ assert_file_lacks "$FT_VENDORED" "CLIPFeatureExtractor" "FluxTrainer vendored fi
 second="$(bash "$SCRIPT_DIR/../bootstrap.sh" 2>&1)"
 assert_contains "$second" "downloads=0" "second run downloads nothing"
 assert_contains "$second" "clones=0" "second run clones nothing"
-assert_contains "$second" "skips=5" "second run skips all five artifacts"
+assert_contains "$second" "skips=6" "second run skips all six artifacts"
 
 # Idempotent: re-running must not double-mangle or fail. The patch finds no
 # CLIPFeatureExtractor matches on run 2 and rewrites nothing.

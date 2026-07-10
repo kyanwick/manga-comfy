@@ -72,6 +72,10 @@ The 24GB card exists for LoRA **training**. Inference doesn't need it.
   kohya-ss/sd-scripts PR #2315). Without that, its SDXL training nodes silently
   fail to register.
 - **Never commit weights.** `.gitignore` blocks `*.safetensors`.
+- **LoRA licence discipline.** Anything added to `LORAS` in `bootstrap.sh` must declare
+  `allowCommercialUse: Image` on Civitai AND have no NoobAI in its lineage — NoobAI
+  forbids commercial use of *model-generated products*. Check the **filename**: the
+  same LoRA often ships a `-NOOB` build alongside a clean one.
 - **Private repo.** Pod-side `git clone`/`pull` wants a fine-grained PAT
   (contents: read) for `kyanwick/manga-comfy`.
 
