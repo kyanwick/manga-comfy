@@ -116,7 +116,21 @@ depth of field, blurry background, bokeh, <setting>,
 masterpiece, best quality, absurdres, newest
 ```
 
-`source_anime, anime screencap` is the LoRA's own trigger. Keep it.
+**Corrected 2026-07-09 from the LoRA author's own version notes** (civitai 345962,
+Illustrious v2.0 build). I had guessed `source_anime`; it is not a trigger.
+
+- **Trigger:** `anime screencap, anime coloring` (plus optional `2d, anime style`)
+- **Negative:** `3d, limited palette, pale color, ai-generated`
+- **Weight:** 1.0 (min 0.7, max 1.2) — not the 0.8 I tuned to
+- **Sampler:** euler a + normal
+
+`pale color` and `limited palette` in the negative are the documented fix for the
+washed-out, low-contrast output I had been patching with invented tags like
+`faded, washed out, low contrast`. Read the model card before tuning.
+
+Caution: with `pale color` removed from the picture, saturation rises. At cfg 6.0
+plus `illuminated face`, highlights clip — creams blow out and colours go
+radioactive. Drop to cfg ~5.0 for closeups.
 
 Negative — the second half is load-bearing:
 
