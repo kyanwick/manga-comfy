@@ -1,0 +1,14 @@
+# Never commit model weights, datasets, or output — they live on the RunPod volume.
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+datasets/
+output/
+*.png
+*.jpg
+*.jpeg
+
+# Local noise
+.DS_Store
+Thumbs.db
